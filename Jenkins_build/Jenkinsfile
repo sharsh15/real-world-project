@@ -1,0 +1,56 @@
+pipeline {
+    agent any
+    stages {
+        stage("Fetching Java Code") {
+            steps {
+                echo "Getting Java code from GitHub"
+                script {
+                    deleteDir()
+                    bat 'git clone https://github.com/sharsh15/real-world-project.git'
+                }
+                echo "Cloned GitHub repository successfully"
+            }
+        }
+        stage("Build Java Code") {
+            steps {
+                echo "Building the code"
+                bat '''
+                cd C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\test\\real-world-project\\check-balance
+                mvn clean install
+                '''
+            }
+        }
+        stage("Creating the docker image using jar file") {
+            steps {
+                echo "Creating the image"
+                bat '''
+                cd C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\test\\real-world-project\\check-balance
+                docker build -t harsh1510/real-world-project:check-balance-v1 .
+                '''
+                echo "Docker image created"
+            }
+        }
+
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
+                                                usernameVariable: 'DOCKERHUB_USER', 
+                                                passwordVariable: 'DOCKERHUB_PASS')]) {
+                    bat """
+                    echo %DOCKERHUB_PASS% | docker login -u %DOCKERHUB_USER% --password-stdin
+                    """
+                    echo 'Login Completed'
+                }
+            }
+        }
+
+        stage('Push Image to Docker Hub') {         
+            steps {
+                bat '''                         
+                docker push harsh1510/real-world-project:check-balance-v1
+                '''       
+                echo 'Push Image Completed'       
+            }            
+        }
+    }
+}
