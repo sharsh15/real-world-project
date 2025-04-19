@@ -1,0 +1,37 @@
+---
+- name: Transfer and execute Jenkins setup script
+  hosts: Jenkins
+  remote_user: ubuntu
+  become: yes
+
+  tasks:
+    - name: Ensure the script does not already exist
+      file:
+        path: /home/ubuntu/Jenkins_with_maven_in_docker.sh
+        state: absent
+
+    - name: Transfer the Jenkins setup script
+      copy:
+        src: /mnt/d/Trycath-Devops/Project/Bash-scripts/Jenkins_with_maven_in_docker.sh
+        dest: /home/ubuntu/Jenkins_with_maven_in_docker.sh
+        mode: '0755'
+
+    - name: Execute the Jenkins setup script
+      command: sudo sh /home/ubuntu/Jenkins_with_maven_in_docker.sh
+
+    - name: Transfer the Dockerfile
+      copy:
+        src: /mnt/d/Trycath-Devops/Project/Docker/dockerfile
+        dest: /home/ubuntu/
+    
+    - name: Transfer the build and run script
+      copy:
+        src: /mnt/d/Trycath-Devops/Project/Bash-scripts/build&run.sh
+        dest: /home/ubuntu/build&run.sh
+        mode: '0755'
+
+    - name: Execute the build and run script
+      command: sudo sh /home/ubuntu/build&run.sh
+
+    - name: Jenkins secret key
+      command: sudo cat /home/ubuntu/jenkinsvolume/secretsinitialAdminPassword
