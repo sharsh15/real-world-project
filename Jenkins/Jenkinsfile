@@ -1,0 +1,34 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'IP_address', defaultValue: 'IP-address', description: 'Enter the public IP address of the EC2 instance')
+        choice(name: 'dockerimage', choices: ['check-balance-', 'dashboard-service-', 'email-statement-', 'login-service-', 'transfer-money-'], description: 'Pick Docker image to pull')
+        string(name: 'version', defaultValue: 'v1', description: 'Enter the tag/version of your Docker image (e.g., v1)')
+        choice(name: 'dockercontainer', choices: ['check-balance-app', 'dashboard-service-app', 'email-statement-app', 'login-service-app', 'transfer-money-app'], description: 'Pick Docker container name to run')
+    }
+
+    environment {
+        IMAGE_NAME_PREFIX = 'harsh1510/real-world-project:'
+        AWS_PAIR_KEY_PATH = 'D:\\Trycath-Devops\\AWS\\Devopskeypair.pem'
+    }
+
+    stages {
+        stage("Deploy App on AWS EC2 Server") {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials',
+                                                  usernameVariable: 'DOCKERHUB_USER',
+                                                  passwordVariable: 'DOCKERHUB_PASS')]) {
+                    bat """
+                        ssh -i ${env.AWS_PAIR_KEY_PATH} -o StrictHostKeyChecking=no ubuntu@${params.IP_address} ^
+                        "echo ${DOCKERHUB_PASS} | docker login -u ${DOCKERHUB_USER} --password-stdin && \
+                        sudo docker pull ${env.IMAGE_NAME_PREFIX}${params.dockerimage}${params.version} && \
+                        sudo docker rm -f ${params.dockercontainer} || true && \
+                        sudo docker run -d --name ${params.dockercontainer} -p 10001:10001 ${env.IMAGE_NAME_PREFIX}${params.dockerimage}${params.version} && \
+                        sudo docker ps -a"
+                    """
+                }
+            }
+        }
+    }
+}

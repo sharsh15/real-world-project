@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'GithubURL', defaultValue: 'Github-repo', description: 'Enter the GitHub repository URL for cloning')
+        string(name: 'build', defaultValue: 'Folder', description: 'Enter the folder where you want to build the jar file')
+        choice(name: 'dockerimage', choices: ['check-balance-', 'dashboard-service-', 'email-statement-', 'login-service-', 'transfer-money-'], description: 'Pick docker image to build')
+        string(name: 'version', defaultValue : 'Tag', description: 'Enter the tag of your docker image')
+    }
+
+    environment {
+        BASE_PATH = 'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\demo\\real-world-project\\'
+        IMAGE_NAME_PREFIX = 'harsh1510/real-world-project:'
+    }
+
+    stages {
+        stage("Fetch Java Code from GitHub") {
+            steps {
+                echo "Cloning repository from ${params.GithubURL}"
+                script {
+                    deleteDir()
+                    bat "git clone ${params.GithubURL}"
+                }
+                echo "Cloned repository successfully."
+            }
+        }
+
+        stage("Build Java Code") {
+            steps {
+                echo "Building the code with Maven"
+                bat """
+                    cd ${env.BASE_PATH}${params.build}
+                    mvn clean install
+                """
+            }
+        }
+
+        stage("Build Docker Image") {
+            steps {
+                echo "Creating Docker image for ${params.dockerimage}"
+                bat """
+                    cd ${env.BASE_PATH}${params.build}
+                    docker build -t ${env.IMAGE_NAME_PREFIX}${params.dockerimage}${version} .
+                """
+            }
+        }
+
+        stage("Docker Hub Login") {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                    echo "Logging into Docker Hub"
+                    bat """
+                        echo %DOCKERHUB_PASS% | docker login -u %DOCKERHUB_USER% --password-stdin
+                    """
+                }
+            }
+        }
+
+        stage("Push Docker Image") {
+            steps {
+                echo "Pushing Docker image to Docker Hub"
+                bat "docker push ${env.IMAGE_NAME_PREFIX}${params.dockerimage}${version}"
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Cleaning up workspace"
+            cleanWs()
+        }
+    }
+}
