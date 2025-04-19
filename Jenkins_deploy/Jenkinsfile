@@ -1,0 +1,22 @@
+pipeline {
+    agent any
+
+    stages {
+        stage("Deploy App on Remote Server") {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
+                                                  usernameVariable: 'DOCKERHUB_USER', 
+                                                  passwordVariable: 'DOCKERHUB_PASS')]) {
+                    bat """
+                        ssh -i D:\\Trycath-Devops\\AWS\\Devopskeypair.pem -o StrictHostKeyChecking=no ubuntu@18.208.139.197 ^
+                        "echo $DOCKERHUB_PASS | sudo docker login -u $DOCKERHUB_USER --password-stdin && \
+                        sudo docker pull harsh1510/real-world-project:check-balance-v1 && \
+                        sudo docker rm -f check-balance-app || true && \
+                        sudo docker run -d --name check-balance-app -p 10001:10001 harsh1510/real-world-project:check-balance-v1 && \
+                        sudo docker ps -a"
+                    """
+                }
+            }
+        }
+    }
+}
